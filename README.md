@@ -22,7 +22,7 @@ https://github.com/user-attachments/assets/7492924d-50ca-44b2-ae2f-50f3a1e853cd
 - **135 expert-designed tasks** across three task types — Prior Authorization, Appeals and Denials Management, and DME Order Processing (all data is synthetic)
 - **1,698 verifiable subtasks** — 1,177 deterministic (JMESPath) checks + 521 LLM-judge rubrics
 
-<img width="1919" height="687" alt="HealthAdminBench environments" src="https://github.com/user-attachments/assets/f7beeb8a-7bd1-4a2d-bb9d-7f75e8ccf9ed" />
+<img alt="HealthAdminBench results" src="./scripts/results.png">
 
 ---
 
