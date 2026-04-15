@@ -89,6 +89,13 @@ class AgentSettings(BaseSettings):
 class HarnessSettings(BaseSettings):
     """Root settings container."""
 
+    model_config = SettingsConfigDict(
+        env_prefix='HARNESS_',
+        env_file=('.env', '.env.local'),
+        env_file_encoding='utf-8',
+        extra='ignore',
+    )
+
     browser: BrowserSettings = Field(default_factory=BrowserSettings)
     limits: LimitSettings = Field(default_factory=LimitSettings)
     agent: AgentSettings = Field(default_factory=AgentSettings)
