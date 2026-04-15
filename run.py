@@ -286,7 +286,7 @@ def main():
     parser.add_argument(
         "--model", "-m",
         choices=["gpt-5", "gpt-5-2", "gpt-5.4", "openai-cua", "openai-cua-code", "claude-opus-4-5", "claude-opus-4-6", "anthropic-cua", "gemini-2.5-pro", "gemini-3", "gemini-3.1", "kimi-k2-5", "deepseek-r1", "qwen-3"],
-        default="gpt-5-2",
+        default="gpt-5.4",
         help="Model to use: gpt-5, gpt-5-2, gpt-5.4, openai-cua, openai-cua-code, claude-opus-4-5, claude-opus-4-6, anthropic-cua, gemini-2.5-pro, gemini-3, gemini-3.1, deepseek-r1, or qwen-3. Default: gpt-5"
     )
     parser.add_argument(

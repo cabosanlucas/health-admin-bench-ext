@@ -1,336 +1,286 @@
 <p align="center">
-  <h1 align="center">🏥 HealthAdminBench </h1>
+  <h1 align="center">🏥 HealthAdminBench</h1>
 </p>
 
 <p align="center">
-  <b>Towards Computer-Use Agents for Solving the $1 Trillion of Administrative Overhead in Healthcare</b>
+  <b>Evaluating Computer-Use Agents on Healthcare Administration Tasks</b>
 </p>
+
 <p align="center">
   <a href="https://healthadminbench.stanford.edu" target="_blank">🌐 Website</a> •
-  <a href="https://openreview.net/forum?id=NNLD7776OF" target="_blank">📄 Paper</a> •
-  <a href="#dataset" target="_blank">💽 Dataset (Envs + Tasks)</a> •
+  <a href="https://arxiv.org/abs/2604.09937" target="_blank">📄 Paper</a> •
+  <a href="#-dataset" target="_blank">💽 Dataset</a> •
   <a href="https://healthadminbench.stanford.edu/leaderboard" target="_blank">🏆 Leaderboard</a>
 </p>
 
 ---
 
-
 https://github.com/user-attachments/assets/7492924d-50ca-44b2-ae2f-50f3a1e853cd
 
+**HealthAdminBench** is a benchmark for evaluating **computer-use agents (CUAs)** on real-world healthcare administration workflows. Healthcare administration accounts for over $1 trillion in annual US spending; HealthAdminBench provides a rigorous foundation for measuring progress toward safely automating it.
 
+- **4 GUI environments** inspired by real revenue-cycle systems — an EHR, two payer portals, and a fax portal
+- **135 expert-designed tasks** across three task types — Prior Authorization, Appeals and Denials Management, and DME Order Processing (all data is synthetic)
+- **1,698 verifiable subtasks** — 1,177 deterministic (JMESPath) checks + 521 LLM-judge rubrics
 
-**HealthAdminBench** is a benchmark for evaluating LLMs on solving real-world administrative healthcare tasks. The benchmark consists of:
+<img width="1919" height="687" alt="HealthAdminBench environments" src="https://github.com/user-attachments/assets/f7beeb8a-7bd1-4a2d-bb9d-7f75e8ccf9ed" />
 
-  * **4 GUI envs** inspired by real healthcare applications (one EHR, two payer portals, and one eFax interface)
-  * **135 tasks** covering insurance verification, prior authorization, clinical reasoning, and durable medical equipment ordering (all data is synthetic)
-  * **1,698 verifiers** across all tasks, including LLM-as-a-judge (n=521) and deterministic (n=1,177) checks
-
-<img width="1919" height="687" alt="Screenshot 2026-03-30 at 3 38 37 PM" src="https://github.com/user-attachments/assets/f7beeb8a-7bd1-4a2d-bb9d-7f75e8ccf9ed" />
-
+---
 
 ## 💾 Installation
 
+### Prerequisites
+
+You need **Python ≥ 3.10**, **[uv](https://docs.astral.sh/uv/)**, and **Node.js ≥ 18** (with `npm`). If you already have them, skip to [Install](#install).
+
+**macOS (Homebrew):**
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh   # uv
+brew install python@3.11                           # Python
+brew install node                                  # Node.js + npm
+```
+
+**Linux:**
+```bash
+# 1. uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+export PATH="$HOME/.local/bin:$PATH"
+
+# 2. Python 3.11 via uv
+uv python install 3.11
+
+# 3. Node.js via nvm
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh"
+nvm install 20
+```
+
+**Windows:** use [WSL](https://learn.microsoft.com/en-us/windows/wsl/install) and follow the Linux steps above.
+
+Verify:
+```bash
+uv --version && python3 --version && node --version && npm --version
+```
+
+### Install
+
 ```bash
 git clone https://github.com/som-shahlab/healthadminbench.git && cd healthadminbench
-uv sync
-uv run hab install # Installs Playwright Chromium. You must edit .env with your API keys
+uv sync                 # Python deps + .venv
+uv run hab install      # Playwright Chromium + OpenAI CUA sidecar + copy .env.local → .env
 ```
+
+### Configure API keys
+
+`hab install` creates `.env` from the `.env.local` template. Open `.env` and add keys for the models you plan to run (see [Model Routing](#-model-routing) for the full mapping):
+
+```bash
+echo 'OPENAI_API_KEY=sk-...'         >> .env   # gpt-5, gpt-5.4, openai-cua
+echo 'ANTHROPIC_API_KEY=sk-ant-...'  >> .env   # claude-opus-4-6, anthropic-cua
+echo 'GEMINI_API_KEY=...'            >> .env   # gemini-2.5-pro, gemini-3
+echo 'OPENROUTER_API_KEY=sk-or-...'  >> .env   # qwen-3, kimi-k2-5, gemini-3.1
+```
+
+### Experiment tracking (optional)
+
+`hab benchmark` supports [Weights & Biases](https://wandb.ai). It is **off by default** and turns on automatically when `WANDB_API_KEY` is set:
+
+```bash
+echo 'WANDB_API_KEY=...'              >> .env
+echo 'WANDB_PROJECT=healthadminbench' >> .env   # optional
+echo 'WANDB_ENTITY=your-username'     >> .env   # optional
+```
+
+---
 
 ## ⚡️ Quickstart
 
-Run one model (`gpt-5.2.`) on one task (`v2/tasks/prior_auth/emr-easy-1`):
+Run the default model (`gpt-5.4`) on the default task (`emr-easy-1`) with a visible browser:
 
 ```bash
-uv run hab run --is-gui # NOTE: You must first set `OPENAI_API_KEY` in `.env`
+uv run hab run --is-gui   # requires OPENAI_API_KEY (or OPENROUTER_API_KEY). Drop --is-gui for headless.
 ```
 
-Here's a more involved example running Claude Opus 4.6 with the Anthropic CUA harness on the `fax-hard-5` task in headless mode against a locally hosted portal (`localhost:3002`) using `screenshot_only` observation and `coordinate` action space with `zero_shot` prompts:
+See [CLI Reference](#️-cli-reference) for all flags.
 
-```bash
-uv run hab run \ # NOTE: You must first set `ANTHROPIC_API_KEY` in `.env`
-  --model anthropic-cua \
-  --task fax-hard-5 \
-  --prompt-mode zero_shot \
-  --observation-mode screenshot_only \
-  --action-space coordinate \
-  --url localhost:3002
-```
-
-<a href="#dataset" name="dataset"></a>
+---
 
 ## 💽 Dataset
 
-### 🕹️ Environments
+### Environments
 
-All GUI envs are *live* and accessible here:
+All four environments are hosted and ready to use. They can also be served locally — see [Local development](#local-development).
 
-| Portal | URL | Description | Username / Password | Status |
-|--------|-----|-------------|-------------------|--------|
-| EMR Prior Auth View | https://emrportal.vercel.app/emr/worklist | EMR prior auth workqueue | N/A | ✅ Live |
-| EMR Denials View | https://emrportal.vercel.app/emr/denied | EMR denials workqueue | N/A | ✅ Live |
-| EMR DME View | https://emrportal.vercel.app/emr/dme | EMR DME workqueue | N/A | ✅ Live |
-| eFax | https://emrportal.vercel.app/fax-portal | eFax | N/A | ✅ Live |
-| Payer A Portal | https://emrportal.vercel.app/payer-a | Payer A portal (purple) | provider@payera.com / demo123 | ✅ Live |
-| Payer B Portal | https://emrportal.vercel.app/payer-b | Payer B portal (blue) | provider@payerb.com / demo123 | ✅ Live |
+| Environment | URL | Credentials |
+|---|---|---|
+| EHR — Prior Auth worklist | https://emrportal.vercel.app/emr/worklist | N/A |
+| EHR — Denials worklist | https://emrportal.vercel.app/emr/denied | N/A |
+| EHR — DME worklist | https://emrportal.vercel.app/emr/dme | N/A |
+| Fax portal | https://emrportal.vercel.app/fax-portal | N/A |
+| Payer A portal | https://emrportal.vercel.app/payer-a | `provider@payera.com` / `demo123` |
+| Payer B portal | https://emrportal.vercel.app/payer-b | `provider@payerb.com` / `demo123` |
 
-### ✏️ Tasks
+### Tasks
 
-The benchmark contains 135 tasks across the following categories:
+135 tasks across three administrative task types:
 
-| Category | Description | # of Tasks |
-|----------|-------------|------------|
-| <a href="./benchmark/v2/tasks/prior_auth">Prior Auth</a> | Insurance verification, prior authorization, and related multi-step payer workflows. | 60 |
-| <a href="./benchmark/v2/tasks/appeals_denials">Denial Appeals</a> | Reviewing denials, gathering documentation, and preparing appeal workflows. | 60 |
-| <a href="./benchmark/v2/tasks/dme">DME Ordering</a> | Durable medical equipment ordering and fax-based coordination workflows. | 15 |
+| Task type | Description | # tasks |
+|---|---|---|
+| [Prior Authorization](./benchmark/v2/tasks/prior_auth) | Verify eligibility, gather EHR data, submit authorization requests via payer portals. | 60 |
+| [Appeals and Denials Management](./benchmark/v2/tasks/appeals_denials) | Review denials, gather documentation, prepare and file appeals. | 60 |
+| [DME Order Processing](./benchmark/v2/tasks/dme) | Retrieve required documentation, submit orders to suppliers (often via fax), record outcomes. | 15 |
 
+Each task is decomposed into fine-grained subtasks verified by a mix of deterministic (JMESPath) checks and LLM-judge rubrics.
 
+---
 
-## ⌨️ CLI Options
+## ⌨️ CLI Reference
 
-### Run One Task
-
-Use the repo-local `uv run hab run` command to run a single task against the hosted benchmark or your local portal instance.
+### Run a single task — `hab run`
 
 ```bash
 uv run hab run \
-  --model qwen-3 \
+  --model claude-opus-4-6 \
   --task emr-easy-1 \
   --prompt-mode general \
   --observation-mode both \
   --action-space dom
 ```
 
-#### Main CLI Flags:
-
-| Option | Common values | What it controls |
-|--------|---------------|------------------|
-| `-m, --model` | `gpt-5`, `claude-opus-4-6`, `gemini-2.5-pro`, `qwen-3`, `openai-cua`, `anthropic-cua` | Which model or agent to run |
-| `-t, --task` | `emr-easy-1`, `emr-hard-5` | Which task to execute |
-| `-p, --prompt-mode` | `zero_shot`, `general`, `task_specific` | How much task guidance the agent gets |
-| `-o, --observation-mode` | `axtree_only`, `screenshot_only`, `both` | What the agent can observe |
+| Flag | Values | Description |
+|---|---|---|
+| `-m, --model` | `gpt-5`, `gpt-5.4`, `claude-opus-4-6`, `gemini-2.5-pro`, `gemini-3`, `qwen-3`, `kimi-k2-5`, `openai-cua`, `anthropic-cua` | Model / agent to run |
+| `-t, --task` | `emr-easy-1`, `fax-hard-5`, … | Task id |
+| `-p, --prompt-mode` | `zero_shot`, `general`, `task_specific` | Prompting strategy (paper §3.7): `zero_shot` = *Task Description*, `general` = *Task Description + Portal Guidance* (primary benchmark setting), `task_specific` = *Task-Specific Step-by-Step* |
+| `-o, --observation-mode` | `axtree_only`, `screenshot_only`, `both` | What the agent observes |
 | `-a, --action-space` | `dom`, `coordinate` | How the agent issues actions |
-| `--url` | `http://localhost:3002` | Override the default hosted environment and target a local portal |
+| `--url` | `http://localhost:3002` | Override the default hosted portal |
+| `--is-gui` | flag | Run Chromium headful (default is headless) |
 
-Notes:
- - Computer-use agents such as `openai-cua` and `anthropic-cua` require `--observation-mode screenshot_only` and `--action-space coordinate`.
- - For backend selection and API key precedence, see [Model routing](#model-routing).
+> Computer-use agents (`openai-cua`, `anthropic-cua`) require `--observation-mode screenshot_only` and `--action-space coordinate`.
 
-### Run Multiple Tasks
-
-Use the `uv run hab benchmark` command to run a batch of tasks (e.g. all prior auth tasks) instead of a single episode.
+### Run a batch of tasks — `hab benchmark`
 
 ```bash
-# Select tasks by prefix
+# By prefix
 uv run hab benchmark \
   --model claude-opus-4-6 \
   --task-prefix prior_auth/ \
   --num-runs 3 \
   --max-steps 15
 
-# Select tasks by list
+# By explicit task list
 uv run hab benchmark \
-  --tasks benchmark/v2/tasks/prior_auth/emr-easy-1.json benchmark/v2/tasks/prior_auth/emr-easy-2.json
+  --tasks benchmark/v2/tasks/prior_auth/emr-easy-1.json \
+          benchmark/v2/tasks/prior_auth/emr-easy-2.json
 ```
 
-#### Main CLI Flags:
+| Flag | Values | Description |
+|---|---|---|
+| `-t, --task-prefix` | `prior_auth/`, `appeals_denials/denial-medium`, … | Expand a prefix into matching task files |
+| `--tasks` | list of `.json` paths | Explicit task list (overrides `--task-prefix`) |
+| `-n, --num-runs` | `1`, `3`, `5` | Runs per task (stability) |
+| `-ms, --max-steps` | `50`, `75`, `100` | Cap agent steps per task |
+| `-r, --output` | `./results` | Output directory |
+| `--resume` | flag | Skip tasks with completed results on disk |
 
-| Option | Common values | What it controls |
-|--------|---------------|------------------|
-| `-t, --task-prefix` | `prior_auth/emr-easy`, `prior_auth/emr`, `appeals_denials/denial-medium` | Expands a task prefix into multiple benchmark tasks |
-| `--tasks` | `benchmark/v2/tasks/...json` | Runs a specific list of task files |
-| `-n, --num-runs` | `1`, `3`, `5` | Repeats each task multiple times for a more stable average |
-| `-ms, --max-steps` | `50`, `75`, `100` | Caps the number of agent steps per task |
-| `-r, --output` | `./results` | Chooses where benchmark results are written |
-| `--resume` |    | Skips tasks with completed results already on disk |
+Results (including `benchmark_results.json` and `benchmark_report.txt`) are written under `results/`.
 
-Results are written under `results/` and include aggregate benchmark output such as `benchmark_results.json` and `benchmark_report.txt`.
-
-Note:
-- The dedicated `hab benchmark-tasks` subcommand currently supports a narrower model list than `hab benchmark`; it omits `gpt-5-2`, `gemini-3.1`, `llama-4-maverick`, and `llama-4-scout`.
-
+---
 
 ## 🧠️ Model Routing
 
-When you run a CLI command with `-m` / `--model`, the harness picks a backend based on the model name and which API keys are present in `.env`.
-
-### Required API Keys
-
-Set the keys you need in `.env`:
+When you pass `-m / --model`, the harness picks a backend based on the model id and which keys are present in `.env`.
 
 | Key | Required for |
-|-----|-------------|
-| `OPENAI_API_KEY` | `gpt-5`, `gpt-5-2`, `gpt-5.4`, `openai-cua` |
+|---|---|
+| `OPENAI_API_KEY` | `gpt-5`, `gpt-5.4`, `openai-cua` |
 | `ANTHROPIC_API_KEY` | `claude-opus-4-6`, `anthropic-cua` |
 | `GEMINI_API_KEY` | `gemini-2.5-pro`, `gemini-3` |
 | `OPENROUTER_API_KEY` | `qwen-3`, `kimi-k2-5`, `gemini-3.1` |
 
-### OpenAI ChatGPT
+<details>
+<summary>Advanced routing details (edge cases, OpenRouter overrides)</summary>
 
-- `gpt-5.4` + `OPENROUTER_API_KEY` -> OpenRouter (`openai/gpt-5.4`)
-- `gpt-5.4` + `OPENAI_API_KEY` -> Direct OpenAI API
-- any other GPT model + `OPENAI_API_KEY` -> Direct OpenAI API
+- **OpenAI.** `gpt-5.4` prefers OpenRouter (`openai/gpt-5.4`) if `OPENROUTER_API_KEY` is set, else direct OpenAI. `gpt-5` uses direct OpenAI.
+- **Anthropic.** Any Claude model uses the direct Anthropic API.
+- **Google.** `gemini-3.1` routes via OpenRouter when `OPENROUTER_API_KEY` is set; other Gemini models use `GEMINI_API_KEY` directly.
+- **OpenRouter overrides:** `OPENROUTER_QWEN3_MODEL`, `OPENROUTER_QWEN3_PROVIDER`, `OPENROUTER_QWEN3_ALLOW_FALLBACKS=false`, `OPENROUTER_KIMI_PROVIDER=fireworks`, `OPENROUTER_KIMI_ALLOW_FALLBACKS=false`, `OPENROUTER_LLM_JUDGE_MODEL`, `OPENROUTER_LLM_JUDGE_PROVIDER`. Use canonical slugs (e.g. `qwen/qwen3-vl-32b-instruct`) to avoid 404s.
 
-With `OPENAI_API_KEY`, `gpt-5` and `gpt-5-2` resolve to OpenAI's `gpt-5.2-2025-12-11` model.
-
-### Google Gemini
-
-- `gemini-3.1` + `OPENROUTER_API_KEY` -> OpenRouter (OpenAI-compatible chat completions)
-- any other Gemini model + `GEMINI_API_KEY` -> Direct Google API (`generateContent`)
-
-### Anthropic Claude
-
-- any Claude model + `ANTHROPIC_API_KEY` -> Direct Anthropic API
-
-### OpenRouter (Open Source Models)
-
-- `qwen-3` requires `OPENROUTER_API_KEY`. Set `OPENROUTER_QWEN3_MODEL` to override the default model slug.
-- `OPENROUTER_QWEN3_PROVIDER` with `OPENROUTER_QWEN3_ALLOW_FALLBACKS=false` hard-pins the provider.
-- `kimi-k2-5` uses OpenRouter and supports provider pinning with `OPENROUTER_KIMI_PROVIDER=fireworks` and `OPENROUTER_KIMI_ALLOW_FALLBACKS=false`.
-- `OPENROUTER_LLM_JUDGE_MODEL` and `OPENROUTER_LLM_JUDGE_PROVIDER` configure the LLM judge, which uses OpenRouter by default.
-- Use canonical model slugs such as `qwen/qwen3-vl-32b-instruct` and `moonshotai/kimi-k2.5` to avoid 404 errors.
+</details>
 
 ---
 
 ## 🙋‍♂️ Contributing
 
-There are two main ways to contribute to HealthAdminBench:
+### Evaluate a new model
 
-### 1. Evaluate a New Model
-
-The fastest way to contribute is to run a new model on the benchmark and share the results.
+The fastest contribution is to run the benchmark with a new model and share results:
 
 ```bash
-# 1. Install
-git clone https://github.com/som-shahlab/healthadminbench.git && cd healthadminbench
-uv sync && uv run hab install
-
-# 2. Set your API key in .env
-echo 'OPENAI_API_KEY=sk-...' >> .env
-
-# 3. Run the full benchmark (all 135 tasks, 3 runs each)
 uv run hab benchmark --model gpt-5 --num-runs 3
-
-# 4. Results are written to results/
+# results/ contains benchmark_results.json and benchmark_report.txt
 ```
 
-To add a new model backend, implement a subclass of `BaseAgent` in [`harness/agents/`](./harness/agents/) (see any existing agent for reference), register it in [`harness/agents/__init__.py`](./harness/agents/__init__.py), and open a PR.
+To add a new backend, implement a subclass of `BaseAgent` in [`harness/agents/`](./harness/agents/), register it in [`harness/agents/__init__.py`](./harness/agents/__init__.py), and open a PR.
 
-### 2. Contribute New Tasks
+### Contribute new tasks
 
-New tasks make the benchmark harder and more comprehensive. Community-contributed tasks go in [`benchmark/v3/tasks/`](./benchmark/v3/tasks/).
+New tasks live in [`benchmark/v3/tasks/<task_type>/`](./benchmark/v3/tasks/). Each task is a single JSON file with an `id`, `goal`, `website`, `difficulty`, `evals` (deterministic `jmespath` checks and/or `llm_judge` rubrics), and a `config` block whose `start_url` must include `{{TASK_ID}}` and `{{RUN_ID}}` placeholders. See [`benchmark/v2/tasks/prior_auth/emr-easy-1.json`](./benchmark/v2/tasks/prior_auth/emr-easy-1.json) for a complete example.
 
-#### Task file format
+Steps:
+1. Pick a task type (`prior_auth/`, `appeals_denials/`, `dme/`) and copy a similar file from [`benchmark/v2/tasks/`](./benchmark/v2/tasks/) as a template.
+2. Edit the `goal`, `evals`, `config`, and metadata.
+3. Validate: `uv run python -m harness.config.task_schema benchmark/v3/tasks/<type>/<id>.json`
+4. Test locally ([Local development](#-local-development)).
+5. Open a PR adding the file(s) to `benchmark/v3/tasks/<type>/`. If new portal UI is required, include it under [`benchmark/v3/portals/`](./benchmark/v3/portals/).
 
-Each task is a single JSON file. Here is the minimal structure:
+### Bug reports
 
-```json
-{
-  "id": "emr-easy-21",
-  "goal": "A clear, natural-language description of what the agent must accomplish.",
-  "website": {
-    "id": "emr",
-    "name": "EMR Portal",
-    "url": "https://emrportal.vercel.app"
-  },
-  "difficulty": "easy",
-  "challengeType": "workflow",
-  "possible": true,
-  "evals": [
-    {
-      "type": "jmespath",
-      "query": "full_state.agentActions.addedAuthNote",
-      "expected_value": true,
-      "points": 1,
-      "description": "Agent added an authorization note"
-    },
-    {
-      "type": "llm_judge",
-      "description": "Agent correctly identified the outcome",
-      "student_answer": "{{full_state.communications[-1].content}}",
-      "student_answer_context": "verification note",
-      "rubric": "Did the agent correctly identify X? Score 1.0 if yes, 0.0 if no.",
-      "points": 1
-    }
-  ],
-  "config": {
-    "task_id": "easy_21",
-    "patient_referral_id": "REF-2025-XXX",
-    "start_url": "/worklist?task_id={{TASK_ID}}&run_id={{RUN_ID}}"
-  }
-}
-```
+Open a [GitHub issue](https://github.com/som-shahlab/health-admin-bench/issues). Harness improvements welcome via PR against `main`.
 
-Key fields:
-- **`id`**: Unique identifier matching the filename (e.g., `emr-easy-21` -> `emr-easy-21.json`)
-- **`goal`**: What the agent should do, written as if instructing a human admin assistant
-- **`difficulty`**: `easy`, `medium`, or `hard`
-- **`evals`**: One or more verifiers. Use `jmespath` for deterministic checks against portal state and `llm_judge` for open-ended clinical reasoning
-- **`config.start_url`**: Where the agent begins; must include `{{TASK_ID}}` and `{{RUN_ID}}` placeholders
+---
 
-#### Steps to contribute a task
+## 🧪 Local development
 
-1. Pick a task category: `prior_auth/`, `appeals_denials/`, or `dme/`
-2. Copy an existing task from [`benchmark/v2/tasks/`](./benchmark/v2/tasks/) as a starting template
-3. Modify the goal, evals, config, and metadata for your new scenario
-4. Validate your task file:
-   ```bash
-   uv run python -m harness.config.task_schema benchmark/v3/tasks/prior_auth/emr-easy-21.json
-   ```
-5. Test it locally against the portals:
-   ```bash
-   cd benchmark/v2/portals && npm install && npm run dev  # in one terminal
-   uv run hab run --task emr-easy-21 --url http://localhost:3002  # in another
-   ```
-6. Open a PR adding your task file(s) to `benchmark/v3/tasks/<category>/`
-
-#### Portal contributions
-
-If your task requires new portal UI or routes, add those changes under [`benchmark/v3/portals/`](./benchmark/v3/portals/) and include them in the same PR.
-
-### Bug Reports and Other Contributions
-
-- **Bugs**: Open a [GitHub issue](https://github.com/som-shahlab/healthadminbench/issues)
-- **Harness improvements**: Submit a PR to the `master` branch
-
-### Local Development
+Serve the portals locally (in a separate terminal):
 
 ```bash
-# Install all dependencies
-uv sync && uv run hab install
-cd benchmark/v2/portals && npm install
+cd benchmark/v2/portals && npm install && npm run dev   # http://localhost:3002
+```
 
-# Start the portals (keep running in a separate terminal)
-npm run dev  # serves at http://localhost:3002
+Then point the harness at localhost:
 
-# Run the harness against localhost
+```bash
 uv run hab run --model gemini-3 --task emr-easy-5 --url http://localhost:3002
 ```
 
-### Debugging
+### Debugging prompts
 
-Set `DEBUG_PROMPT=1` to dump exactly what the agent sees:
+Set `DEBUG_PROMPT=1` to dump exactly what the agent sees on each step:
 
 ```bash
 DEBUG_PROMPT=1 PROMPT_AXTREE_LIMIT=8000 uv run hab run --url http://localhost:3002
 ```
 
-This writes per-step dumps to `traces/`:
-- `step_XXX.txt`: text payload sent to the model, including the goal, URL, step, recent actions, and page elements.
-- `step_XXX.png`: screenshot attached to the model request for screenshot-capable runs.
+Per-step dumps are written to `traces/`:
+- `step_XXX.txt` — full text payload (goal, URL, step, recent actions, page elements)
+- `step_XXX.png` — screenshot attached to the model request (for screenshot-capable runs)
 
-Raise or lower `PROMPT_AXTREE_LIMIT` to control how much of the accessibility tree is included in the prompt dump.
+Tune `PROMPT_AXTREE_LIMIT` to control how much of the accessibility tree is included.
 
-----
-
-If you find this work useful, please cite it as follows:
+---
 
 ## 📄 Citation
 
 ```bibtex
-@article{healthadminbench,
-  title={HealthAdminBench: A Benchmark for Evaluating LLMs on Solving Administrative Healthcare Tasks},
-  author={Suhana Bedi, Ryan Welch, Ethan Steinberg, Michael Wornow, Taeil Matthew Kim, Haroun Ahmed, Sanmi Koyejo, Nigam Shah},
-  journal={ICLR Workshop AIWILD},
-  year={2026}
+@misc{bedi2026healthadminbenchevaluatingcomputeruseagents,
+      title={HealthAdminBench: Evaluating Computer-Use Agents on Healthcare Administration Tasks},
+      author={Suhana Bedi and Ryan Welch and Ethan Steinberg and Michael Wornow and Taeil Matthew Kim and Haroun Ahmed and Peter Sterling and Bravim Purohit and Qurat Akram and Angelic Acosta and Esther Nubla and Pritika Sharma and Michael A. Pfeffer and Sanmi Koyejo and Nigam H. Shah},
+      year={2026},
+      eprint={2604.09937},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI},
+      url={https://arxiv.org/abs/2604.09937}
 }
 ```

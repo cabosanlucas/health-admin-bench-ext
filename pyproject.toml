@@ -3,7 +3,7 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "health-admin-portals"
+name = "health-admin-bench"
 version = "0.1.0"
 description = "HealthAdminBench evaluation harness and repo-local developer CLI"
 readme = "README.md"
@@ -47,12 +47,10 @@ package = true
 [tool.setuptools]
 include-package-data = true
 py-modules = [
-    "bootstrap_analysis",
+    "run",
     "run_benchmark",
     "run_benchmark_grid",
-    "run_benchmark_tasks",
     "run_llm_evaluator",
-    "run",
     "utils",
 ]
 

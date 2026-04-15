@@ -49,6 +49,10 @@ DEFAULT_WANDB_PROJECT = os.environ.get(
     "WANDB_PROJECT", "first_v2_benchmark"
 )
 DEFAULT_WANDB_ENTITY = os.environ.get("WANDB_ENTITY", "health-portals")
+# Enable wandb only if the user has it configured (API key present or already logged in).
+DEFAULT_WANDB_ENABLED = bool(
+    os.environ.get("WANDB_API_KEY") or os.environ.get("WANDB_ENABLED")
+)
 MODEL_CHOICES = [
     "gpt-5",
     "gpt-5-2",
@@ -231,7 +235,7 @@ def run_reproducible_evaluation(
     max_retries: int = 3,
     output_dir: str = "./results",
     resume: bool = False,
-    wandb_enabled: bool = True,
+    wandb_enabled: bool = DEFAULT_WANDB_ENABLED,
     wandb_project: str = DEFAULT_WANDB_PROJECT,
     wandb_entity: Optional[str] = DEFAULT_WANDB_ENTITY,
     wandb_group: Optional[str] = None,
@@ -339,7 +343,7 @@ def main():
         dest="model",
         choices=MODEL_CHOICES,
         metavar="MODEL",
-        default="gpt-5-2",
+        default="gpt-5.4",
         help=(
             "Model to evaluate (default: gpt-5-2)\n"
             "Supported models:\n"
