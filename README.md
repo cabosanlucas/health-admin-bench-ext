@@ -28,9 +28,7 @@
 
 ## 💾 Installation
 
-First, you'll need **Python ≥ 3.10**, **[uv](https://docs.astral.sh/uv/)**, and **Node.js ≥ 18** (with `npm`).
-
-Second, run:
+You'll need **Python ≥ 3.10**, **[uv](https://docs.astral.sh/uv/)**, and **Node.js ≥ 18** (with `npm`).
 
 ```bash
 git clone https://github.com/som-shahlab/health-admin-bench.git && cd health-admin-bench
