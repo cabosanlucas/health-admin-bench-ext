@@ -34,6 +34,7 @@ from loguru import logger
 from PIL import Image
 from playwright.sync_api import sync_playwright, Page, Browser, BrowserContext
 
+from harness.base_environment import BaseEnvironment
 from harness.config import TaskV2, settings
 from harness.config.urls import (
     get_emr_url,
@@ -45,7 +46,7 @@ from harness.utils.html_utils import prune_html
 from harness.real_obs import build_axtree_text
 
 
-class EpicEnvironment:
+class EpicEnvironment(BaseEnvironment):
     """
     Gymnasium-style environment for Epic portal tasks
 
@@ -1034,10 +1035,3 @@ class EpicEnvironment:
         except Exception as e:
             logger.warning(f"Failed to clear local state: {e}")
 
-    def __enter__(self):
-        """Context manager entry"""
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Context manager exit"""
-        self.close()

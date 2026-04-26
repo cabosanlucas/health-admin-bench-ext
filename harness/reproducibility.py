@@ -4,6 +4,7 @@ Reproducibility utilities for multi-run evaluation with statistical analysis
 
 import json
 import logging
+import os
 import random
 import statistics
 import tempfile
@@ -317,6 +318,14 @@ def evaluate_with_multiple_runs(
             except Exception as e:
                 logger.error(f"Failed to save trajectory: {e}", exc_info=True)
         
+        # Write result.json
+        if result is not None and trajectory is not None:
+            elapsed = trajectory.steps[-1].timestamp if trajectory.steps else 0.0
+            try:
+                _write_result_json(result, trajectory, elapsed, resolved_output_dir)
+            except Exception as e:
+                logger.error(f"Failed to write result.json: {e}", exc_info=True)
+
         # Record result
         if result is not None:
             run_results.append({
@@ -328,7 +337,7 @@ def evaluate_with_multiple_runs(
                 "steps": len(trajectory.steps) if trajectory else 0,
                 "eval_results": result.eval_results,
             })
-            
+
             if trajectory:
                 trajectories.append(trajectory)
         else:
@@ -782,6 +791,69 @@ def _relative_results_path(file_path: Path) -> Path:
         idx = parts.index("results")
         return Path(*parts[idx + 1 :])
     return Path(file_path.name)
+
+
+def _strip_non_serializable(obj: Any) -> Any:
+    """Recursively remove PIL Images and other non-JSON-serializable objects."""
+    try:
+        from PIL import Image
+        if isinstance(obj, Image.Image):
+            return None
+    except ImportError:
+        pass
+    if isinstance(obj, dict):
+        return {k: _strip_non_serializable(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_strip_non_serializable(v) for v in obj]
+    return obj
+
+
+def _write_result_json(
+    result: "EvaluationResult",
+    trajectory: "Trajectory",
+    elapsed_seconds: float,
+    output_dir: Path,
+) -> None:
+    """Write result.json to output_dir and to HARNESS_RESULT_PATH if set."""
+    final_state = trajectory.final_state or {}
+    snapshot_keys = ("signals", "full_state", "payer_a_state", "payer_b_state",
+                     "aetna_state", "anthem_state", "faxPortal", "medplum_state")
+    final_state_snapshot = _strip_non_serializable(
+        {k: final_state[k] for k in snapshot_keys if k in final_state}
+    )
+
+    payload = {
+        "task_id": result.task_id,
+        "run_id": trajectory.run_id,
+        "environment": final_state.get("environment", "epic"),
+        "passed": result.passed,
+        "score": result.score,
+        "max_points": result.max_points,
+        "percentage": result.percentage,
+        "eval_results": result.eval_results,
+        "actions_history": final_state.get("actions_history", []),
+        "step_count": len(trajectory.steps),
+        "elapsed_seconds": round(elapsed_seconds, 3),
+        "final_state_snapshot": final_state_snapshot,
+    }
+
+    serialized = json.dumps(payload, indent=2, default=_json_serializable)
+
+    local_path = output_dir / "result.json"
+    try:
+        local_path.write_text(serialized)
+        logger.info(f"Wrote result.json to {local_path}")
+    except Exception as e:
+        logger.error(f"Failed to write result.json to {local_path}: {e}")
+
+    harness_result_path = os.environ.get("HARNESS_RESULT_PATH")
+    if harness_result_path:
+        try:
+            Path(harness_result_path).parent.mkdir(parents=True, exist_ok=True)
+            Path(harness_result_path).write_text(serialized)
+            logger.info(f"Wrote result.json to HARNESS_RESULT_PATH={harness_result_path}")
+        except Exception as e:
+            logger.error(f"Failed to write result.json to {harness_result_path}: {e}")
 
 
 def _run_episode_with_trajectory(

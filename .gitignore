@@ -27,9 +27,9 @@ wheels/
 .installed.cfg
 *.egg
 MANIFEST
-
+.env.local
 # uv
-uv.lock
+v.lock
 
 # Conda
 .conda/
